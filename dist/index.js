@@ -50,24 +50,37 @@ module.exports = createMessage
 const core = __nccwpck_require__(2186)
 const fetch = __nccwpck_require__(467)
 
+class HTTPResponseError extends Error {
+  constructor(response) {
+    super(`HTTP Error Response: ${response.status} ${response.statusText}`);
+    this.response = response;
+  }
+}
+
+function checkStatus(response) {
+  if (response.ok) {
+    return response;
+  } else {
+    throw new HTTPResponseError(response);
+  }
+}
+
 async function sendMessage(message, to) {
-  try { 
-    const res = await fetch(to, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-      },
-      body: JSON.stringify(message)
-    })
+  const response = await fetch(to, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+    },
+    body: JSON.stringify(message),
+  });
 
-    if (!res.ok) {
-      throw new Error(`Request failed with status ${res.status}`)
-    }
-
-    return await res.statusText
-  } 
-  catch (error) {
-    throw error
+  try {
+    const validResponse = checkStatus(response);
+    return validResponse.statusText;
+  } catch (error) {
+    const errorBody = await error.response.text();
+    core.error(`Error body: ${errorBody}`);
+    throw error;
   }
 }
 
